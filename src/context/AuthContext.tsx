@@ -7,14 +7,16 @@ import { User } from "@supabase/supabase-js";
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  loginWithOTP: (email: string) => Promise<{ error: any }>;
+  loginWithPassword: (email: string, pass: string) => Promise<{ error: any }>;
+  registerWithPassword: (email: string, pass: string) => Promise<{ error: any }>;
   logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
-  loginWithOTP: async () => ({ error: null }),
+  loginWithPassword: async () => ({ error: null }),
+  registerWithPassword: async () => ({ error: null }),
   logout: async () => {},
 });
 
@@ -38,13 +40,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const loginWithOTP = async (email: string) => {
-    const { data, error } = await supabase.auth.signInWithOtp({
+  const loginWithPassword = async (email: string, pass: string) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
-      options: {
-        // You can specify redirect URL here if needed
-        emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
-      }
+      password: pass,
+    });
+    return { error };
+  };
+
+  const registerWithPassword = async (email: string, pass: string) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password: pass,
     });
     return { error };
   };
@@ -54,7 +61,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, loginWithOTP, logout }}>
+    <AuthContext.Provider value={{ user, loading, loginWithPassword, registerWithPassword, logout }}>
       {children}
     </AuthContext.Provider>
   );

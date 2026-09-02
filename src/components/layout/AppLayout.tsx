@@ -14,26 +14,38 @@ const navItems = [
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading, logout, loginWithOTP } = useAuth();
+  const { user, loading, logout, loginWithPassword, registerWithPassword } = useAuth();
   const pathname = usePathname();
   
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isRegister, setIsRegister] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+    if (!email || !password) {
+      setMessage({ text: "กรุณากรอกอีเมลและรหัสผ่านให้ครบถ้วน", type: 'error' });
+      return;
+    }
     
     setIsSubmitting(true);
     setMessage(null);
     
-    const { error } = await loginWithOTP(email);
+    let error;
+    if (isRegister) {
+      const res = await registerWithPassword(email, password);
+      error = res.error;
+    } else {
+      const res = await loginWithPassword(email, password);
+      error = res.error;
+    }
     
     if (error) {
       setMessage({ text: error.message, type: 'error' });
     } else {
-      setMessage({ text: "ส่งลิงก์เข้าสู่ระบบไปที่อีเมลของคุณแล้ว! กรุณาเช็คอีเมล", type: 'success' });
+      setMessage({ text: isRegister ? "สมัครสมาชิกสำเร็จ! กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบสำเร็จ!", type: 'success' });
     }
     setIsSubmitting(false);
   };
@@ -47,9 +59,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="min-h-screen flex items-center justify-center bg-green-50 px-4">
         <div className="bg-white p-8 rounded-2xl shadow-lg max-w-sm w-full text-center">
           <h1 className="text-2xl font-bold text-green-700 mb-2">Life Tracker</h1>
-          <p className="text-gray-500 mb-6">เข้าสู่ระบบด้วยอีเมลเพื่อติดตามเป้าหมาย</p>
+          <p className="text-gray-500 mb-6">{isRegister ? "สมัครสมาชิกใหม่" : "เข้าสู่ระบบเพื่อติดตามเป้าหมาย"}</p>
           
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleAuth} className="space-y-4">
             <div>
               <input
                 type="email"
@@ -58,6 +70,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
                 required
+              />
+            </div>
+            <div>
+              <input
+                type="password"
+                placeholder="รหัสผ่าน (ขั้นต่ำ 6 ตัวอักษร)"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
+                required
+                minLength={6}
               />
             </div>
             
@@ -72,9 +95,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               disabled={isSubmitting}
               className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors disabled:opacity-50"
             >
-              {isSubmitting ? "กำลังส่งลิงก์..." : "ส่งลิงก์เข้าสู่ระบบ (Magic Link)"}
+              {isSubmitting ? "กำลังดำเนินการ..." : (isRegister ? "สมัครสมาชิก" : "เข้าสู่ระบบ")}
             </button>
           </form>
+
+          <div className="mt-6">
+            <button
+              onClick={() => {
+                setIsRegister(!isRegister);
+                setMessage(null);
+              }}
+              className="text-sm text-green-600 hover:underline"
+            >
+              {isRegister ? "มีบัญชีอยู่แล้ว? เข้าสู่ระบบที่นี่" : "ยังไม่มีบัญชี? สมัครสมาชิกใหม่"}
+            </button>
+          </div>
         </div>
       </div>
     );

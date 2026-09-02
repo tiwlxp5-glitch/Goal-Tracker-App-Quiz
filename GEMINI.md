@@ -7,7 +7,7 @@
 ## Architecture
 - **Frontend**: Next.js 16 (App Router), React 19
 - **Styling**: Tailwind CSS, shadcn/ui, Recharts
-- **Database & Auth**: Supabase (PostgreSQL + Auth)
+- **Database & Auth**: Supabase (PostgreSQL + Email/Password Auth)
 - **AI**: Gemini 3.5 Flash via Next.js API Routes (`/api/chat`). Note: Uses native `https.request` instead of `@google/generative-ai` SDK to bypass Next.js 16 `undici` ECONNRESET bugs on Windows.
 
 ## Setup Instructions
