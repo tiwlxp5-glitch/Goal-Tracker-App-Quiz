@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import { collection, query, where, onSnapshot, addDoc, updateDoc, doc, deleteDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/context/AuthContext";
 import { Goal, Task } from "@/types";
 
@@ -10,43 +9,100 @@ export const useGoals = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user || !db) {
+    if (!user) {
       setGoals([]);
       setLoading(false);
       return;
     }
 
-    const q = query(collection(db, "goals"), where("userId", "==", user.uid));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const goalsData: Goal[] = [];
-      snapshot.forEach((doc) => {
-        goalsData.push({ id: doc.id, ...doc.data() } as Goal);
-      });
-      setGoals(goalsData);
-      setLoading(false);
-    });
+    const fetchGoals = async () => {
+      const { data, error } = await supabase
+        .from("goals")
+        .select("*")
+        .order("created_at", { ascending: false });
 
-    return () => unsubscribe();
+      if (error) {
+        console.error("Error fetching goals:", error);
+      } else {
+        const formattedGoals = data.map(d => ({
+          id: d.id,
+          userId: d.user_id,
+          title: d.title,
+          description: d.description,
+          type: d.type,
+          color: d.color,
+          icon: d.icon,
+          createdAt: d.created_at,
+          targetDate: d.target_date,
+          tasks: d.tasks || [],
+          completedDates: d.completed_dates || []
+        })) as Goal[];
+        setGoals(formattedGoals);
+      }
+      setLoading(false);
+    };
+
+    fetchGoals();
+
+    // Set up realtime subscription
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'goals',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          fetchGoals();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [user]);
 
-  const addGoal = async (goalData: Omit<Goal, "id" | "userId">) => {
-    if (!user || !db) return;
-    await addDoc(collection(db, "goals"), {
-      ...goalData,
-      userId: user.uid,
-    });
+  const addGoal = async (goalData: Omit<Goal, "id" | "userId" | "createdAt">) => {
+    if (!user) return;
+    
+    const dataToInsert = {
+      user_id: user.id,
+      title: goalData.title,
+      description: goalData.description,
+      type: goalData.type,
+      color: goalData.color,
+      icon: goalData.icon,
+      target_date: goalData.targetDate,
+      tasks: goalData.tasks || [],
+      completed_dates: goalData.completedDates || []
+    };
+
+    await supabase.from("goals").insert([dataToInsert]);
   };
 
   const updateGoal = async (id: string, updates: Partial<Goal>) => {
-    if (!user || !db) return;
-    const goalRef = doc(db, "goals", id);
-    await updateDoc(goalRef, updates);
+    if (!user) return;
+    
+    const mappedUpdates: any = {};
+    if (updates.title !== undefined) mappedUpdates.title = updates.title;
+    if (updates.description !== undefined) mappedUpdates.description = updates.description;
+    if (updates.type !== undefined) mappedUpdates.type = updates.type;
+    if (updates.color !== undefined) mappedUpdates.color = updates.color;
+    if (updates.icon !== undefined) mappedUpdates.icon = updates.icon;
+    if (updates.targetDate !== undefined) mappedUpdates.target_date = updates.targetDate;
+    if (updates.tasks !== undefined) mappedUpdates.tasks = updates.tasks;
+    if (updates.completedDates !== undefined) mappedUpdates.completed_dates = updates.completedDates;
+
+    await supabase.from("goals").update(mappedUpdates).eq("id", id);
   };
 
   const deleteGoal = async (id: string) => {
-    if (!user || !db) return;
-    const goalRef = doc(db, "goals", id);
-    await deleteDoc(goalRef);
+    if (!user) return;
+    await supabase.from("goals").delete().eq("id", id);
   };
 
   const toggleTask = async (goalId: string, taskId: string, isDone: boolean) => {

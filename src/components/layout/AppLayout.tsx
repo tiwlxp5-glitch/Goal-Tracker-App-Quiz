@@ -4,6 +4,7 @@ import { useAuth } from "@/context/AuthContext";
 import { LogOut, LayoutDashboard, Target, CheckSquare, BarChart2 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 
 const navItems = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -13,25 +14,75 @@ const navItems = [
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, logout, login } = useAuth();
+  const { user, loading, logout, loginWithOTP } = useAuth();
   const pathname = usePathname();
+  
+  const [email, setEmail] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) return;
+    
+    setIsSubmitting(true);
+    setMessage(null);
+    
+    const { error } = await loginWithOTP(email);
+    
+    if (error) {
+      setMessage({ text: error.message, type: 'error' });
+    } else {
+      setMessage({ text: "ส่งลิงก์เข้าสู่ระบบไปที่อีเมลของคุณแล้ว! กรุณาเช็คอีเมล", type: 'success' });
+    }
+    setIsSubmitting(false);
+  };
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center bg-green-50">กำลังโหลด...</div>;
+  }
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-green-50">
+      <div className="min-h-screen flex items-center justify-center bg-green-50 px-4">
         <div className="bg-white p-8 rounded-2xl shadow-lg max-w-sm w-full text-center">
           <h1 className="text-2xl font-bold text-green-700 mb-2">Life Tracker</h1>
-          <p className="text-gray-500 mb-6">เข้าสู่ระบบเพื่อติดตามเป้าหมายของคุณ</p>
-          <button
-            onClick={login}
-            className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors"
-          >
-            Sign in with Google
-          </button>
+          <p className="text-gray-500 mb-6">เข้าสู่ระบบด้วยอีเมลเพื่อติดตามเป้าหมาย</p>
+          
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <input
+                type="email"
+                placeholder="อีเมลของคุณ"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-green-500"
+                required
+              />
+            </div>
+            
+            {message && (
+              <div className={`p-3 text-sm rounded-lg ${message.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                {message.text}
+              </div>
+            )}
+            
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-xl transition-colors disabled:opacity-50"
+            >
+              {isSubmitting ? "กำลังส่งลิงก์..." : "ส่งลิงก์เข้าสู่ระบบ (Magic Link)"}
+            </button>
+          </form>
         </div>
       </div>
     );
   }
+
+  // Get display name or email prefix
+  const displayName = user.user_metadata?.full_name || user.email?.split('@')[0] || "User";
+  const avatarUrl = user.user_metadata?.avatar_url || `https://ui-avatars.com/api/?name=${displayName}&background=10b981&color=fff`;
 
   return (
     <div className="flex h-screen bg-green-50/30">
@@ -63,9 +114,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </nav>
         <div className="p-4 border-t border-green-100">
           <div className="flex items-center gap-3 mb-4 px-2">
-            <img src={user.photoURL || ""} alt="Profile" className="w-10 h-10 rounded-full" />
+            <img src={avatarUrl} alt="Profile" className="w-10 h-10 rounded-full" />
             <div className="overflow-hidden">
-              <p className="text-sm font-semibold text-gray-800 truncate">{user.displayName}</p>
+              <p className="text-sm font-semibold text-gray-800 truncate">{displayName}</p>
               <p className="text-xs text-gray-500 truncate">{user.email}</p>
             </div>
           </div>
@@ -86,7 +137,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <h1 className="text-lg font-bold text-green-700 flex items-center gap-2">
             <Target className="w-5 h-5" /> Tracker
           </h1>
-          <img src={user.photoURL || ""} alt="Profile" className="w-8 h-8 rounded-full" onClick={logout} />
+          <img src={avatarUrl} alt="Profile" className="w-8 h-8 rounded-full" onClick={logout} />
         </header>
 
         <div className="flex-1 overflow-y-auto p-4 md:p-8 pb-24 md:pb-8">

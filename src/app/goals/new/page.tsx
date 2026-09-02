@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useGoals } from "@/hooks/useGoals";
-import { Bot, User, ArrowLeft, Loader2, Target, CalendarDays, Check, Sparkles } from "lucide-react";
+import { Bot, User, ArrowLeft, Loader2, Target, CalendarDays, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,6 @@ import { Card, CardContent } from "@/components/ui/card";
 
 export default function NewGoalPage() {
   const router = useRouter();
-  const { addGoal } = useGoals();
   const [mode, setMode] = useState<"choose" | "manual" | "ai">("choose");
 
   if (mode === "choose") {
@@ -77,7 +76,6 @@ function ManualGoalForm({ onBack }: { onBack: () => void }) {
       type,
       icon,
       color: "#10b981",
-      createdAt: new Date().toISOString(),
       tasks: [],
       completedDates: []
     });
@@ -120,7 +118,6 @@ function ManualGoalForm({ onBack }: { onBack: () => void }) {
   );
 }
 
-// AI Interview Component
 type Message = { role: "user" | "model"; content: string };
 
 function AIGoalInterview({ onBack }: { onBack: () => void }) {
@@ -170,10 +167,9 @@ function AIGoalInterview({ onBack }: { onBack: () => void }) {
     await addGoal({
       title: generatedData.title || "เป้าหมายใหม่",
       description: generatedData.description || "สร้างโดย AI",
-      type: "long-term", // AI breaks down tasks, so it's long-term
+      type: "long-term",
       icon: generatedData.icon || "🌟",
       color: "#10b981",
-      createdAt: new Date().toISOString(),
       tasks: generatedData.tasks?.map((t: any) => ({
         id: crypto.randomUUID(),
         title: t.title,
