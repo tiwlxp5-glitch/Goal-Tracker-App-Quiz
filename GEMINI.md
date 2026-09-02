@@ -1,5 +1,9 @@
 # Goal & To-Do Life Tracker Web App
 
+## Production
+- **Live URL**: https://goal-tracker-app-quiz.vercel.app
+- **GitHub Repository**: https://github.com/tiwlxp5-glitch/Goal-Tracker-App-Quiz
+
 ## Architecture
 - **Frontend**: Next.js 16 (App Router), React 19
 - **Styling**: Tailwind CSS, shadcn/ui, Recharts
